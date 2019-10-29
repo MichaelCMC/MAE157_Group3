@@ -1,5 +1,5 @@
 
-int press_1 = A0;
+int press_1 = 0;
 
 double pressure = 0;
 
