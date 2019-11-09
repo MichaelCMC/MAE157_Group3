@@ -2,7 +2,7 @@ int incomingByte = 0;
 
 void setup() {
   // put your setup code here, to run once:
-  Seral.begin(38400);
+  Serial.begin(96000);
 
 }
 
@@ -12,7 +12,7 @@ void loop() {
     incomingByte = Serial.read();
 
     Serial.print("I received: ");
-    Serial.println(incomingByte, DEC)
+    Serial.println(incomingByte, DEC);
   }
 
 }
