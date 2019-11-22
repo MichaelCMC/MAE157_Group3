@@ -22,6 +22,11 @@ double press_int_val = 0;
 double press_ext_val = 0;
 const double desired_press_int = 0;
 
+//Sample Rate Control
+const double sam(1000); // sampling frequency in hz
+const int final(1000000); //number of total samples to record
+const double interval(1.0/sam); //time interval between samples in [s]
+bool state(false);
 // Communication Variables
 char master_state = '0';
 
@@ -37,7 +42,6 @@ void setup() {
     delay(1000);
   }
   Serial.println("card initialized.");
-
   // set up pressure reading
   pinMode(press_int_pin, INPUT);
   pinMode(press_ext_pin, INPUT);
@@ -45,29 +49,36 @@ void setup() {
 }
 
 void loop() {
-  press_int_val = bits_to_psi(analogRead(press_int_pin));
-  press_ext_val = bits_to_psi(analogRead(press_ext_pin));
+  //launch loop
+  while(state == true){
+    press_int_val = bits_to_psi(analogRead(press_int_pin));
+    press_ext_val = bits_to_psi(analogRead(press_ext_pin));
+    if(i < final && time() - t >= interval){
+      record(time());
+      record(press_int_val);
+      record(press_ext_val);
+      t = time();
+      i++;
+    }
+  }
+    ///////////////////Signal Processing
+    // read from master
+  while(state == false){
+    press_int_val = bits_to_psi(analogRead(press_int_pin));
+    press_ext_val = bits_to_psi(analogRead(press_ext_pin));
 
-  /////////////////SD CARD DATA Recording
-  //TODO: Decide to dump each cycle or on alternate cycle time
-  record(time());
-  record(press_int_val);
-  record(press_ext_val);
+    if(Serial.available() > 0){master_state = Serial.read();}
 
-  ///////////////////Signal Processing
-  // read from master
-  if(Serial.available() > 0){master_state = Serial.read();}
+    // send signal to master that the right pressure has been reached
+    if(press_int_val >= desired_press_int){Serial.write('1');}
 
-  // send signal to master that the right pressure has been reached
-  if(press_int_val >= desired_press_int){Serial.write('1');}
-
-  // if master is ready to launch rocket, open the solenoid valve
-  if(master_state = '1'){digitalWrite(relay_pin, HIGH);
-  } else {digitalWrite(relay_pin, LOW);}
-
-  delay(10); //TODO: Replace delay with proper sampling control method
+    // if master is ready to launch rocket, open the solenoid valve
+    if(master_state = '1'){digitalWrite(relay_pin, HIGH);
+    } else {digitalWrite(relay_pin, LOW);}
+  }
 }
 
+/////////////////////////Functions
 // function that takes pressure reading in bits and outputs psi
 double bits_to_psi(double bits){
   double voltage = bits*5/1023.0;
