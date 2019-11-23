@@ -5,6 +5,7 @@ double bits_to_psi(double bits);
 double time();
 void record(double data);
 void dump();
+void Display();
 
 const int baud_rate = 9600;
 // SD Card
@@ -22,12 +23,18 @@ double press_int_val = 0;
 double press_ext_val = 0;
 const double desired_press_int = 0;
 
-//Sample Rate Control
+//Rate Control
+//sample rate
 const double sam(1000); // sampling frequency in hz
 const int final(1000000); //number of total samples to record
 const double interval(1.0/sam); //time interval between samples in [s]
-bool state(false);
+double t(0); // sampling time tracking variable
+//signal rate
+const double sig(100); //signal frequency in hz
+const double sInt(1.0/sig); //signal time period in seconds
+double sT(0); //signal time tracking variable
 // Communication Variables
+bool state(false);
 char master_state = '0';
 
 //////////////////////////End Header
@@ -60,9 +67,14 @@ void loop() {
       t = time();
       i++;
     }
+    if(time() - sT >= sInt){
+      dump();
+      Serial.write(//NEEDS FORMATTED STRING TO SEND);
+      sT = time();
+    }
   }
-    ///////////////////Signal Processing
-    // read from master
+  ///////////////////Signal Processing
+  // read from master
   while(state == false){
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
@@ -86,18 +98,17 @@ double bits_to_psi(double bits){
   return psi;
 }
 
+//Function that grabs current time, based on our standardized format
 double time(){
   return(micros()/1000000.0);
 }
-
+//Modifies sdata by concatenating the passed data with a conditional comma preceeding it
 void record(double data){
   if(sdata != "")
-  {
-    sdata += ",";
-  }
+    sdata += ","; //playing fast and loose
   sdata += String(data);
 }
-
+//dumps recorded data to SD card
 void dump(){
   File dataFile = SD.open(filename, FILE_WRITE);
   // if the file is available, write to it:
@@ -105,12 +116,22 @@ void dump(){
     dataFile.println(sdata);
     dataFile.close();
     sdata = "";
-
-    // print to the serial port too:
-    //Serial.write(sdata);
   }
   // if the file isn't open, pop up an error:
   else {
-    Serial.println("error opening datalog.txt");
+    //TODO: Put some kind of error message signal
   }
+}
+//Takes pressure readings, typecasts them and appends respective variables beforehand
+void Display(double p1, double p2, char sig = '0' ){
+  String out = "";
+  out += 'a';
+  out += sig;
+  out += 'd';
+  out += String(time());
+  out += 'b';
+  out += String(p1);
+  out += 'c';
+  out += String(p2);
+  Serial.write(out);
 }
