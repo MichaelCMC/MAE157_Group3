@@ -56,8 +56,31 @@ void setup() {
 }
 
 void loop() {
-  //launch loop
+  ///////////////////Signal Processing
+  while(state == false){
+    press_int_val = bits_to_psi(analogRead(press_int_pin));
+    press_ext_val = bits_to_psi(analogRead(press_ext_pin));
+
+    //TODO: figure out what signals we will recieve from master and from there interperet signals
+    if(Serial.available() > 0){master_state = Serial.read();}
+
+    // send signal to master that the right pressure has been reached
+    if(press_int_val >= desired_press_int){Serial.write('1');}
+
+    // if master is ready to launch rocket, open the solenoid valve
+    if(master_state = '1'){digitalWrite(relay_pin, HIGH);
+    } else {digitalWrite(relay_pin, LOW);}
+  }
+
+  ///////////////////Launch and Collect Data loop
   while(state == true){
+    //LAUNCH CONTROL
+    //Launch happens in parallel with data collection
+    if(i*interval >= 2.0)
+      digitalWrite(relay_pin, HIGH);
+    if(i*interval >= 3.0 && i_interval <= 3.5)
+      digitalWrite(relay_pin, LOW);
+    //DATA COLLECTION
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
     if(i < final && time() - t >= interval){
@@ -69,24 +92,9 @@ void loop() {
     }
     if(time() - sT >= sInt){
       dump();
-      Serial.write(//NEEDS FORMATTED STRING TO SEND);
+      Display(press_int_val, press_ext_val);
       sT = time();
     }
-  }
-  ///////////////////Signal Processing
-  // read from master
-  while(state == false){
-    press_int_val = bits_to_psi(analogRead(press_int_pin));
-    press_ext_val = bits_to_psi(analogRead(press_ext_pin));
-
-    if(Serial.available() > 0){master_state = Serial.read();}
-
-    // send signal to master that the right pressure has been reached
-    if(press_int_val >= desired_press_int){Serial.write('1');}
-
-    // if master is ready to launch rocket, open the solenoid valve
-    if(master_state = '1'){digitalWrite(relay_pin, HIGH);
-    } else {digitalWrite(relay_pin, LOW);}
   }
 }
 
@@ -97,7 +105,6 @@ double bits_to_psi(double bits){
   double psi = voltage *50 - 25;
   return psi;
 }
-
 //Function that grabs current time, based on our standardized format
 double time(){
   return(micros()/1000000.0);
@@ -123,15 +130,15 @@ void dump(){
   }
 }
 //Takes pressure readings, typecasts them and appends respective variables beforehand
-void Display(double p1, double p2, char sig = '0' ){
+void Display(double p1, double p2, char sig = '0'){
   String out = "";
   out += 'a';
   out += sig;
   out += 'd';
   out += String(time());
   out += 'b';
-  out += String(p1);
+  out += String(p1); // internal pressure
   out += 'c';
-  out += String(p2);
+  out += String(p2); // external pressure
   Serial.write(out);
 }
