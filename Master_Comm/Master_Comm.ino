@@ -15,10 +15,14 @@ const int RGB_red_pin = 11;
 const int RGB_green_pin = 10;
 const int RGB_blue_pin = 9;
 
+// Serial parsing
+double curr_time = 0;
+double curr_p_int = 0;
+double curr_p_ext = 0;
+char curr_sign ='0';
+
 // high if the button is pressed
 int button_state = 0;
-// high if slave has right internal pressure
-char slave_state = '0';
 // high if pot is turned to right position
 int pot_state = 0;
 // RGB value from pot reading
@@ -68,41 +72,39 @@ void setup() {
 }
 
 void loop() {
+  // read from slave
+  slave_reading();
+
   // reads if the button has been pushed
   button_state = digitalRead(button_pin);
 
   // turn on RGB LED
   RGB(analogRead(pot_pin));
 
-  // read from slave
-  if(Serial.available() > 0){slave_state = Serial.read();}
-
   if(analogRead(pot_pin) >= 681) {pot_state = HIGH;
   } else {pot_state = LOW;}
 
   // if slave pressure reading is corret, turn on LED
-  if(slave_state == '1'){digitalWrite(slave_led_pin, HIGH); 
+  if(curr_sign == '1'){digitalWrite(slave_led_pin, HIGH); 
   } else {digitalWrite(slave_led_pin, LOW);}
   
 
   // if button is pressed, slave at right pressure, and pot at right position launch rocket
-  if(button_state == HIGH && slave_state == '1' && pot_state == HIGH){
+  if(button_state == HIGH && curr_sign == '1' && pot_state == HIGH){
     // send signal to slave to launch the thing
+    Serial.write('2');
 
     // turn off the LEDs and set the states to low
-    digitalWrite(pot_led_pin, LOW);
+    RGB(0);
     digitalWrite(slave_led_pin, LOW);
-    slave_state = '0';
-    // 5 sec delay
-    delay(5000);
-
-    Serial.write('0');
+    curr_sign = '0';
   }
   lcd.clear();
-  lcd.print(Serial.read());
+  // lcd.print(Serial.read());
   delay(10);
 }
 
+// RBG LED tuning
 void RGB(int pot){
   RGB_pot = map(pot, 0, 1023, 0, 255);
   if (pot<341 && pot > 5){
@@ -117,5 +119,61 @@ void RGB(int pot){
       analogWrite(RGB_red_pin, 255);
       analogWrite(RGB_green_pin, 255);
       analogWrite(RGB_blue_pin, RGB_pot);
+  }
+}
+
+// begin reading slave data
+void slave_reading(){
+  // currently read char
+  char curr_read = 'z';
+  // data indicator
+  char indicator = 'z';
+  // actual data read
+  String data_string = "";
+  // signaling chars
+  String sig_chars = "abcd";
+
+  if (Serial.available() > 0){
+    // inf while loop
+    while (true){
+      // read first char
+      curr_read = Serial.read();
+
+      // if read char is an indicator
+      if (sig_chars.indexOf(curr_read) != -1){
+        switch(indicator){
+          // skip if first instance
+          case 'z':
+            break;
+          // if a, return signal as char
+          case 'a':
+            curr_sign = data_string.charAt(0);
+            data_string = "";
+            break;
+          // if b, return as internal pressure as double
+          case 'b':
+            curr_p_int = data_string.toDouble();
+            data_string = "";
+            break;
+          // if c, return as external pressure as double
+          case 'c':
+            curr_p_ext = data_string.toDouble();
+            data_string = "";
+            break;
+          // if d, return as time read as double
+          case 'd':
+            curr_time = data_string.toDouble();
+            data_string = "";
+            break;
+        }
+        // set indicator to currently read value
+        indicator = curr_read;
+      // if currently read is e, end function
+      } else if (curr_read == 'e'){ return;
+      } else{
+          // add to the data string
+          data_string += curr_read;
+      }
+    }
   }
 }
