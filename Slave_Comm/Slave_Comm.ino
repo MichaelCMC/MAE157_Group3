@@ -5,12 +5,12 @@ double bits_to_psi(double bits);
 double time();
 void record(double data);
 void dump();
-void Display();
+void Display(double press_int_val, double press_ext_val, char sig);
 
 const int baud_rate = 9600;
 // SD Card
 const int chipSelect = 4;
-const String filename = "Pressure.csv"
+const String filename = "Pressure.csv";
 String sdata = "";
 
 // set up pins
@@ -26,7 +26,7 @@ const double desired_press_int = 0;
 //Rate Control
 //sample rate
 const double sam(1000); // sampling frequency in hz
-const int final(1000000); //number of total samples to record
+const int final(10000); //number of total samples to record (altered from 1000000 to 10000)
 const double interval(1.0/sam); //time interval between samples in [s]
 double t(0); // sampling time tracking variable
 //signal rate
@@ -36,6 +36,9 @@ double sT(0); //signal time tracking variable
 // Communication Variables
 bool state(false);
 char master_state = '0';
+
+int i = 0;
+double i_interval = 0;
 
 //////////////////////////End Header
 
@@ -62,14 +65,19 @@ void loop() {
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
 
     //TODO: figure out what signals we will recieve from master and from there interperet signals
-    if(Serial.available() > 0){master_state = Serial.read();}
+    if(Serial.available() > 0)
+    {
+      master_state = Serial.read();
+    }
 
     // send signal to master that the right pressure has been reached
     if(press_int_val >= desired_press_int){Serial.write('1');}
 
     // if master is ready to launch rocket, open the solenoid valve
-    if(master_state = '1'){digitalWrite(relay_pin, HIGH);
-    } else {digitalWrite(relay_pin, LOW);}
+    if(master_state = '2') // changed this from a 1 to a 2
+      digitalWrite(relay_pin, HIGH);
+    else 
+      digitalWrite(relay_pin, LOW);
   }
 
   ///////////////////Launch and Collect Data loop
@@ -92,7 +100,7 @@ void loop() {
     }
     if(time() - sT >= sInt){
       dump();
-      Display(press_int_val, press_ext_val);
+      Display(press_int_val, press_ext_val, sig);
       sT = time();
     }
   }
@@ -126,7 +134,8 @@ void dump(){
   }
   // if the file isn't open, pop up an error:
   else {
-    //TODO: Put some kind of error message signal
+    // Put some kind of error message signal
+    Serial.print("File unable to be opened");
   }
 }
 //Takes pressure readings, typecasts them and appends respective variables beforehand
@@ -134,11 +143,12 @@ void Display(double p1, double p2, char sig = '0'){
   String out = "";
   out += 'a';
   out += sig;
+  out += 'b';
+  out += String(p2); // external pressure
+  out += 'c';
+  out += String(p1); // internal pressure
   out += 'd';
   out += String(time());
-  out += 'b';
-  out += String(p1); // internal pressure
-  out += 'c';
-  out += String(p2); // external pressure
-  Serial.write(out);
+  out += 'e';
+  Serial.println(out); //Serial.write(out);
 }
