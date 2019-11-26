@@ -68,14 +68,31 @@ void setup() {
   pinMode(pot_pin, INPUT);
   pinMode(pot_led_pin, OUTPUT);
   pinMode(slave_led_pin, OUTPUT);
-  
+  // read garbage values left over(?)
+  delay(10);
+  Serial.read();
+  delay(10);
 }
 
 void loop() {
+  
   // read from slave
   slave_reading();
 
-  // reads if the button has been pushed
+  // For testing use a0b0.123c0.234d0.345e
+//  if (Serial.available()>0){
+//  Serial.print(curr_sign);
+//  Serial.print('\t');
+//  Serial.print(curr_p_ext);
+//  Serial.print('\t');
+//  Serial.print(curr_p_int);
+//  Serial.print('\t');
+//  Serial.println(curr_time);
+//  delay(20);
+//  }
+  
+
+  //i reads if the button has been pushed
   button_state = digitalRead(button_pin);
 
   // turn on RGB LED
@@ -107,7 +124,11 @@ void loop() {
 // RBG LED tuning
 void RGB(int pot){
   RGB_pot = map(pot, 0, 1023, 0, 255);
-  if (pot<341 && pot > 5){
+  if (pot < 25){
+      analogWrite(RGB_red_pin, 0);
+      analogWrite(RGB_green_pin, 0);
+      analogWrite(RGB_blue_pin, 0);
+  } else if (pot<341 && pot > 25){
       analogWrite(RGB_red_pin, RGB_pot);
       analogWrite(RGB_green_pin, 0);
       analogWrite(RGB_blue_pin, 0);
@@ -131,11 +152,11 @@ void slave_reading(){
   // actual data read
   String data_string = "";
   // signaling chars
-  String sig_chars = "abcd";
+  String sig_chars = "abcde";
 
   if (Serial.available() > 0){
     // inf while loop
-    while (true){
+    while (Serial.available() > 0){
       // read first char
       curr_read = Serial.read();
 
@@ -149,30 +170,34 @@ void slave_reading(){
           case 'a':
             curr_sign = data_string.charAt(0);
             data_string = "";
+            delay(20);
             break;
           // if b, return as internal pressure as double
           case 'b':
             curr_p_int = data_string.toDouble();
             data_string = "";
+            delay(20);
             break;
           // if c, return as external pressure as double
           case 'c':
             curr_p_ext = data_string.toDouble();
             data_string = "";
+            delay(20);
             break;
           // if d, return as time read as double
           case 'd':
             curr_time = data_string.toDouble();
             data_string = "";
+            delay(20);
             break;
         }
         // set indicator to currently read value
         indicator = curr_read;
-      // if currently read is e, end function
-      } else if (curr_read == 'e'){ return;
+        if (curr_read == 'e'){return;}
       } else{
           // add to the data string
           data_string += curr_read;
+          delay(20);
       }
     }
   }
