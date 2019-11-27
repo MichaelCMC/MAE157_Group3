@@ -2,7 +2,7 @@
 #include <SD.h>
 
 double bits_to_psi(double bits);
-double time();
+double tim(double offset = 0);
 void record(double data);
 void dump();
 void Display(double press_int_val, double press_ext_val, char sig);
@@ -69,39 +69,49 @@ void loop() {
     {
       master_state = Serial.read();
     }
-
     // send signal to master that the right pressure has been reached
     if(press_int_val >= desired_press_int){Serial.write('1');}
 
-    // if master is ready to launch rocket, open the solenoid valve
-    if(master_state = '2') // changed this from a 1 to a 2
-      digitalWrite(relay_pin, HIGH);
-    else 
-      digitalWrite(relay_pin, LOW);
+    if(master_state = '2')
+      state = true
   }
+    // if master is ready to launch rocket, open the solenoid valve
+//    if(master_state = '2') // changed this from a 1 to a 2
+//      digitalWrite(relay_pin, HIGH);
+//    else
+//      digitalWrite(relay_pin, LOW);
+//  }
 
   ///////////////////Launch and Collect Data loop
   while(state == true){
     //LAUNCH CONTROL
-    //Launch happens in parallel with data collection
+    //Begins recording data for 2 seconds and then opens the relay while still collecting data
+    //then closes the relay after 1.5 seconds and will continue collecting data for up to 100 seconds
+    //data collection cap is defined by [final] which control max # of samples to be taken and [sam] which controls interval between samples
+
+    //Relay control setup
     if(i*interval >= 2.0)
       digitalWrite(relay_pin, HIGH);
-    if(i*interval >= 3.0 && i_interval <= 3.5)
+    if(i*interval >= 3.5 && i_interval <= 4.0)
       digitalWrite(relay_pin, LOW);
+
     //DATA COLLECTION
+    //first if statement is for sampling frequency and will control the rate at which data is collected on the very long sdata string
+    //second if statement controls the rate at which sdata is dumped onto the SD card and rate at which a data sample is sent to the master
+    //best to send data fairly slowly, maybe 1.5hz or so since updating the lcd too fast makes it look ugly. Also to prevent filling up the buffer
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
-    if(i < final && time() - t >= interval){
-      record(time());
+    if(i < final && tim() - t >= interval){
+      record(tim());
       record(press_int_val);
       record(press_ext_val);
-      t = time();
+      t = tim();
       i++;
     }
-    if(time() - sT >= sInt){
-      dump();
-      Display(press_int_val, press_ext_val, sig);
-      sT = time();
+    if(tim() - sT >= sInt){
+      dump(); //dump function for writing to SD card and clearing out sdata
+      Display(press_int_val, press_ext_val, current);
+      sT = tim();
     }
   }
 }
@@ -114,8 +124,8 @@ double bits_to_psi(double bits){
   return psi;
 }
 //Function that grabs current time, based on our standardized format
-double time(){
-  return(micros()/1000000.0);
+double tim(double offset = 0){
+  return((micros()/1000000.0) - offset);
 }
 //Modifies sdata by concatenating the passed data with a conditional comma preceeding it
 void record(double data){
@@ -139,7 +149,7 @@ void dump(){
   }
 }
 //Takes pressure readings, typecasts them and appends respective variables beforehand
-void Display(double p1, double p2, char sig = '0'){
+void Display(double p1, double p2, char current = '0'){
   String out = "";
   out += 'a';
   out += sig;
