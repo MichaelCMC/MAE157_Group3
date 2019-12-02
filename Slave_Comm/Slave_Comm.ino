@@ -158,7 +158,7 @@ void Display(){
   out += 'c';
   out += String(truncate(press_ext_val,2)); // external pressure
   out += 'd';
-  out += String(truncate(time(), 2));
+  out += String(truncate(tim(), 2));
   out += 'e';
   //Serial.println(out);
   //c_array = out.c_str();
