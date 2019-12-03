@@ -1,14 +1,12 @@
 #include<LiquidCrystal.h>
-const int baud_rate = 9600;
+const long baud_rate = 115200;
 
 // pin for button reading
-const int button_pin = 2;
+const int button_pin = 13;
 // pin for the potentiometer reading
-const int pot_pin = 8;
-// output pin for led indicating if pot is turned to right position
-const int pot_led_pin = 7;
+const int pot_pin = A0;
 // output pin for led indicating if slave has right pressure
-const int slave_led_pin = 6;
+const int slave_led_pin = 12;
 
 // rgb LED pin set up
 const int RGB_red_pin = 11;
@@ -50,23 +48,21 @@ d7 - r6
 A - resistor to 5v
 k - gnd
 */
-const int r1 = 0; //pin rs
-const int r2 = 1; //pin e
-const int r3 = 2; //pin d4
-const int r4 = 3; //pin d5
-const int r5 = 4; //pin d6
-const int r6 = 5; //pin d7
+const int r1 = 7; //pin rs
+const int r2 = 6; //pin e
+const int r3 = 5; //pin d4
+const int r4 = 4; //pin d5
+const int r5 = 3; //pin d6
+const int r6 = 2; //pin d7
 
 LiquidCrystal lcd(r1, r2, r3, r4, r5, r6);
 
-int t =0;
 void setup() {
-  
+  lcd.begin(16,2);
   Serial.begin(baud_rate);
   // pin set up
   pinMode(button_pin, INPUT);
   pinMode(pot_pin, INPUT);
-  pinMode(pot_led_pin, OUTPUT);
   pinMode(slave_led_pin, OUTPUT);
   // read garbage values left over(?)
   delay(10);
@@ -75,12 +71,13 @@ void setup() {
 }
 
 void loop() {
-  
+  to_LCD();
   // read from slave
-  slave_reading();
-
+  if (slave_reading()){
+  }
+  //Serial.println(Serial.read());
   // For testing use a0b0.123c0.234d0.345e
-//  if (Serial.available()>0){
+ /* if (Serial.available()>0){
 //  Serial.print(curr_sign);
 //  Serial.print('\t');
 //  Serial.print(curr_p_ext);
@@ -89,7 +86,7 @@ void loop() {
 //  Serial.print('\t');
 //  Serial.println(curr_time);
 //  delay(20);
-//  }
+  } */
   
 
   //i reads if the button has been pushed
@@ -107,28 +104,41 @@ void loop() {
   
 
   // if button is pressed, slave at right pressure, and pot at right position launch rocket
-  if(button_state == HIGH && curr_sign == '1' && pot_state == HIGH){
+  if(button_state == HIGH && curr_sign == '0' && pot_state == HIGH){
     // send signal to slave to launch the thing
-    Serial.write('2');
+    for(int i = 0; i < 4; i++){
+      Serial.write('y');
+    }
 
     // turn off the LEDs and set the states to low
     RGB(0);
     digitalWrite(slave_led_pin, LOW);
     curr_sign = '0';
+    delay(10);
   }
+}
+
+// LCD printing function
+void to_LCD(){
+  String line_1 = "Int: ";
+  line_1 += + curr_p_int;;
+  String line_2 = "Ext: ";
+  line_2 +=  + curr_p_ext;
   lcd.clear();
-  // lcd.print(Serial.read());
-  delay(10);
+  lcd.setCursor(0,0);
+  lcd.print(line_1);
+  lcd.setCursor(0,1);
+  lcd.print(line_2);
 }
 
 // RBG LED tuning
 void RGB(int pot){
   RGB_pot = map(pot, 0, 1023, 0, 255);
-  if (pot < 25){
+  if (pot < 150){
       analogWrite(RGB_red_pin, 0);
       analogWrite(RGB_green_pin, 0);
       analogWrite(RGB_blue_pin, 0);
-  } else if (pot<341 && pot > 25){
+  } else if (pot<341 && pot > 50){
       analogWrite(RGB_red_pin, RGB_pot);
       analogWrite(RGB_green_pin, 0);
       analogWrite(RGB_blue_pin, 0);
@@ -144,7 +154,7 @@ void RGB(int pot){
 }
 
 // begin reading slave data
-void slave_reading(){
+bool slave_reading(){
   // currently read char
   char curr_read = 'z';
   // data indicator
@@ -159,9 +169,10 @@ void slave_reading(){
     while (Serial.available() > 0){
       // read first char
       curr_read = Serial.read();
-
+      //Serial.print(curr_read);
       // if read char is an indicator
       if (sig_chars.indexOf(curr_read) != -1){
+        //Serial.println("");
         switch(indicator){
           // skip if first instance
           case 'z':
@@ -170,35 +181,32 @@ void slave_reading(){
           case 'a':
             curr_sign = data_string.charAt(0);
             data_string = "";
-            delay(20);
             break;
           // if b, return as internal pressure as double
           case 'b':
             curr_p_int = data_string.toDouble();
             data_string = "";
-            delay(20);
             break;
           // if c, return as external pressure as double
           case 'c':
             curr_p_ext = data_string.toDouble();
             data_string = "";
-            delay(20);
             break;
           // if d, return as time read as double
           case 'd':
             curr_time = data_string.toDouble();
             data_string = "";
-            delay(20);
             break;
         }
         // set indicator to currently read value
         indicator = curr_read;
-        if (curr_read == 'e'){return;}
+        if (curr_read == 'e'){return true;}
       } else{
           // add to the data string
           data_string += curr_read;
-          delay(20);
       }
     }
   }
+
+  return false;
 }
