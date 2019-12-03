@@ -82,10 +82,11 @@ void loop() {
     //data collection cap is defined by [final] which control max # of samples to be taken and [sam] which controls interval between samples
     current = '0';
     //Relay control setup
-    if(i*interval >= 2.0)
+    if(i*interval >= 0){
       digitalWrite(relay_pin, HIGH);
       tlaunch = time(0);
-    if(i*interval >= 3.5 && i_interval <= 4.0)
+    }
+    if(i*interval >= 1.5 && i_interval <= 2.0)
       digitalWrite(relay_pin, LOW);
 
     //DATA COLLECTION
@@ -96,7 +97,7 @@ void loop() {
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
     in = String(press_int_val,3);
     out = String(press_int_val,3);
-    if(i < final && time() - t >= interval){
+    if(i < final && time(0) - t >= interval){
       record();
       t = time(0);
       i++;
@@ -105,7 +106,7 @@ void loop() {
       dump(); //dump function for writing to SD card and clearing out sdata
       sT = time(0);
     }
-    if(time(0) - dT >= sInt/4){
+    if(time(0) - dT >= sInt*4){
       Display();
       dT = time(0);
     }
@@ -149,7 +150,7 @@ double time(double offset){
 //Modifies sdata by concatenating the passed data with a conditional comma preceeding it
 void record(){
   //Serial.print("record");
-  sdata += String(time(),3);
+  sdata += String(time(tlaunch), 3);
   sdata += ',';
   sdata += in;
   sdata += ',';
