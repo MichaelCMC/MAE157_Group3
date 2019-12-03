@@ -1,15 +1,8 @@
 #include <SPI.h>
 #include <SD.h>
 
-double time();
-double bits_to_psi(double bits);
-double tim(double offset = 0);
-void record(double data);
-void dump();
-void Display();
-float truncate(float val, byte dec);
 
-const long baud_rate = 115200;
+const float baud_rate = 115200;
 // SD Card
 const int chipSelect = 4;
 const String filename = "Pressure.csv";
@@ -33,7 +26,7 @@ const double interval(1.0/sam); //time interval between samples in [s]
 double t(0); // sampling time tracking variable
 double tlaunch(0);
 //signal rate
-const double sig(2); //signal frequency in hz
+const double sig(1000); //signal frequency in hz
 const double sInt(1.0/sig); //signal time period in seconds
 double sT(0); //signal time tracking variable
 // Communication Variables
@@ -49,22 +42,22 @@ double i_interval = 0;
 void setup() {
   Serial.begin(baud_rate);
   // see if the card is present and can be initialized, keep waiting if not
-  while (!SD.begin(chipSelect)) {
-    //Serial.print("stuck");
-  }
   // set up pressure reading
   pinMode(press_int_pin, INPUT);
   pinMode(press_ext_pin, INPUT);
   pinMode(relay_pin, OUTPUT);
+  delay(10);
+  Serial.read();
+  delay(10);
 }
 
 void loop() {
   ///////////////////Signal Processing
   while(state == false){
+    current ='1';
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
-    Serial.println(press_int_val);
-    Serial.println(press_ext_val);
+
     //TODO: figure out what signals we will recieve from master and from there interperet signals
     if(Serial.available() > 0)
     {
@@ -72,15 +65,14 @@ void loop() {
     }
     // send signal to master that the right pressure has been reached
     if(press_int_val >= desired_press_int){current = '1';}
-    Serial.print(tim() - sT);
-    if(tim() - sT >= sInt){
-      Serial.print("loop");
+    if(time(0) - sT >= sInt){
       Display();
-      sT = tim();
+      sT = time(0);
     }
 
-    if(master_state = 'y')
+    if(master_state == 'y'){
       state = true;
+      }
   }
 
   ///////////////////Launch and Collect Data loop
@@ -89,11 +81,11 @@ void loop() {
     //Begins recording data for 2 seconds and then opens the relay while still collecting data
     //then closes the relay after 1.5 seconds and will continue collecting data for up to 100 seconds
     //data collection cap is defined by [final] which control max # of samples to be taken and [sam] which controls interval between samples
-
+    current = '0';
     //Relay control setup
     if(i*interval >= 2.0)
       digitalWrite(relay_pin, HIGH);
-      tlaunch = tim();
+      tlaunch = time(0);
     if(i*interval >= 3.5 && i_interval <= 4.0)
       digitalWrite(relay_pin, LOW);
 
@@ -103,21 +95,34 @@ void loop() {
     //best to send data fairly slowly, maybe 1.5hz or so since updating the lcd too fast makes it look ugly. Also to prevent filling up the buffer
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
-    if(i < final && tim() - t >= interval){
-      record(tim(tlaunch));
-      record(press_int_val);
-      record(press_ext_val);
-      sdata += '\n';
-
-      t = tim();
-      i++;
-    }
-    if(tim() - sT >= sInt){
-      dump(); //dump function for writing to SD card and clearing out sdata
+    if(time(0) - sT >= sInt){
       Display();
-      sT = tim();
+      sT = time(0);
     }
   }
+}
+
+void Display(){
+  String out = "";
+  out += 'a';
+  out += current;
+  out += 'b';
+  //out += String(truncate(press_int_val,2)); // internal pressure
+  out += String(press_int_val,4);
+  out += 'c';
+  //out += String(truncate(press_ext_val,2)); // external pressure
+  out += String(1.04,4);
+  out += 'd';
+  out += String(time(0),4);
+  out += 'e';
+  //Serial.println(out);
+  char c_array[30] = "";
+  for (size_t i = 0; i < out.length(); i++)
+  {
+      c_array[i] = out[i];// comment back in
+  }
+  Serial.write(c_array);
+  Serial.println("");
 }
 
 /////////////////////////Functions
@@ -128,7 +133,7 @@ double bits_to_psi(double bits){
   return psi;
 }
 //Function that grabs current time, based on our standardized format
-double tim(double offset = 0){
+double time(double offset){
   return((micros()/1000000.0) - offset);
 }
 //Modifies sdata by concatenating the passed data with a conditional comma preceeding it
@@ -152,31 +157,10 @@ void dump(){
   }
 }
 //Takes pressure readings, typecasts them and appends respective variables beforehand
-void Display(){
-  Serial.println("start");
-  String out = "a";
-  out += current;
-  out += 'b';
-  //out += String(truncate(press_int_val,2)); // internal pressure
-  out += String(1.02);
-  out += 'c';
-  //out += String(truncate(press_ext_val,2)); // external pressure
-  out += String(1.04);
-  out += 'd';
-  out += String(truncate(time(), 2));
-  out += 'e';
-  //Serial.println(out);
-  char c_array[30] = "";
-  for (size_t i = 0; i < out.length(); i++)
-  {
-      c_array[i] = out[i];// comment back in
-  }
-  //char c_array[22] = "a0b0.123c0.234d0.345e"; // comment this out
-  Serial.write(c_array);
-}
+
 
 float truncate(float val, byte dec)
-{
+  {
     float x = val * pow(10, dec);
     float y = round(x);
     float z = x - y;
