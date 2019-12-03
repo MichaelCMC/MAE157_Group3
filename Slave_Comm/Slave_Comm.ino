@@ -3,10 +3,10 @@
 
 
 const float baud_rate = 115200;
-// SD Card
-const int chipSelect = 4;
-const String filename = "Pressure.csv";
+//
 String sdata = "";
+String in = "";
+String out = "";
 
 // set up pins
 const int relay_pin = 2;
@@ -26,9 +26,10 @@ const double interval(1.0/sam); //time interval between samples in [s]
 double t(0); // sampling time tracking variable
 double tlaunch(0);
 //signal rate
-const double sig(1000); //signal frequency in hz
+const double sig(800); //signal frequency in hz
 const double sInt(1.0/sig); //signal time period in seconds
 double sT(0); //signal time tracking variable
+double dT(0); //Display time tracker
 // Communication Variables
 bool state(false);
 char master_state = '0';
@@ -41,8 +42,6 @@ double i_interval = 0;
 
 void setup() {
   Serial.begin(baud_rate);
-  // see if the card is present and can be initialized, keep waiting if not
-  // set up pressure reading
   pinMode(press_int_pin, INPUT);
   pinMode(press_ext_pin, INPUT);
   pinMode(relay_pin, OUTPUT);
@@ -95,9 +94,20 @@ void loop() {
     //best to send data fairly slowly, maybe 1.5hz or so since updating the lcd too fast makes it look ugly. Also to prevent filling up the buffer
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
-    if(time(0) - sT >= sInt){
-      Display();
+    in = String(press_int_val,3);
+    out = String(press_int_val,3);
+    if(i < final && time() - t >= interval){
+      record();
+      t = time(0);
+      i++;
+    }
+    if(time(0) - sT >= sInt || sizeof(sdata) >= 20){
+      dump(); //dump function for writing to SD card and clearing out sdata
       sT = time(0);
+    }
+    if(time(0) - dT >= sInt/4){
+      Display();
+      dT = time(0);
     }
   }
 }
@@ -111,7 +121,7 @@ void Display(){
   out += String(press_int_val,4);
   out += 'c';
   //out += String(truncate(press_ext_val,2)); // external pressure
-  out += String(1.04,4);
+  out += String(press_int_val,4);
   out += 'd';
   out += String(time(0),4);
   out += 'e';
@@ -137,24 +147,19 @@ double time(double offset){
   return((micros()/1000000.0) - offset);
 }
 //Modifies sdata by concatenating the passed data with a conditional comma preceeding it
-void record(double data){
-  if(sdata != "")
-    sdata += ","; //playing fast and loose
-  sdata += String(data);
+void record(){
+  //Serial.print("record");
+  sdata += String(time(),3);
+  sdata += ',';
+  sdata += in;
+  sdata += ',';
+  sdata += out;
+  sdata += '\n';
 }
 //dumps recorded data to SD card
 void dump(){
-  File dataFile = SD.open(filename, FILE_WRITE);
-  // if the file is available, write to it:
-  if (dataFile) {
-    dataFile.print(sdata);
-    dataFile.close();
-    sdata = "";
-  }
-  // if the file isn't open, pop up an error:
-  else {
-    // Put some kind of error message signal
-  }
+  Serial.print(sdata);
+  sdata = "";
 }
 //Takes pressure readings, typecasts them and appends respective variables beforehand
 
