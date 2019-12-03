@@ -48,12 +48,12 @@ d7 - r6
 A - resistor to 5v
 k - gnd
 */
-const int r1 = 7; //pin rs
-const int r2 = 6; //pin e
-const int r3 = 5; //pin d4
-const int r4 = 4; //pin d5
-const int r5 = 3; //pin d6
-const int r6 = 2; //pin d7
+const int r1 = 2; //pin rs
+const int r2 = 3; //pin e
+const int r3 = 4; //pin d4
+const int r4 = 5; //pin d5
+const int r5 = 6; //pin d6
+const int r6 = 7; //pin d7
 
 LiquidCrystal lcd(r1, r2, r3, r4, r5, r6);
 
