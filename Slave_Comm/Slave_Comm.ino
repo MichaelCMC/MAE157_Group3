@@ -96,7 +96,7 @@ void loop() {
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
     in = String(press_int_val,3);
-    out = String(press_int_val,3);
+    out = String(press_ext_val,3);
     if(i < final && time(0) - t >= interval){
       record();
       t = time(0);
@@ -119,10 +119,10 @@ void Display(){
   out += current;
   out += 'b';
   //out += String(truncate(press_int_val,2)); // internal pressure
-  out += String(press_int_val,4);
+  out += String(press_int_val *37.5 - 18.75,4);
   out += 'c';
   //out += String(truncate(press_ext_val,2)); // external pressure
-  out += String(press_int_val,4);
+  out += String(press_ext_val *37.5 - 18.75,4);
   out += 'd';
   out += String(time(0),4);
   out += 'e';
@@ -140,8 +140,8 @@ void Display(){
 // function that takes pressure reading in bits and outputs psi
 double bits_to_psi(double bits){
   double voltage = bits*5/1023.0;
-  double psi = voltage *50 - 25;
-  return psi;
+  //double psi = voltage *37.5 - 18.75;
+  return voltage;
 }
 //Function that grabs current time, based on our standardized format
 double time(double offset){
