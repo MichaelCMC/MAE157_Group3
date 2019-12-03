@@ -21,7 +21,7 @@ const double desired_press_int = 0;
 //Rate Control
 //sample rate
 const double sam(1000); // sampling frequency in hz
-const int final(10000); //number of total samples to record (altered from 1000000 to 10000)
+const long final(100000); //number of total samples to record
 const double interval(1.0/sam); //time interval between samples in [s]
 double t(0); // sampling time tracking variable
 double tlaunch(0);
@@ -35,7 +35,7 @@ bool state(false);
 char master_state = '0';
 char current('0');
 
-int i = 0;
+long i = 0;
 double i_interval = 0;
 
 //////////////////////////End Header
@@ -82,11 +82,11 @@ void loop() {
     //data collection cap is defined by [final] which control max # of samples to be taken and [sam] which controls interval between samples
     current = '0';
     //Relay control setup
-    if(i*interval >= 0){
+    if(i*interval >= 1 && tlaunch == 0){
       digitalWrite(relay_pin, HIGH);
       tlaunch = time(0);
     }
-    if(i*interval >= 1.5 && i_interval <= 2.0)
+    if(i*interval >= 2.5 && i_interval <= 3.0)
       digitalWrite(relay_pin, LOW);
 
     //DATA COLLECTION
@@ -106,7 +106,7 @@ void loop() {
       dump(); //dump function for writing to SD card and clearing out sdata
       sT = time(0);
     }
-    if(time(0) - dT >= sInt*4){
+    if(time(0) - dT >= sInt*10){
       Display();
       dT = time(0);
     }
