@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include <SD.h>
 
+double time();
 double bits_to_psi(double bits);
 double tim(double offset = 0);
 void record(double data);
@@ -8,7 +9,7 @@ void dump();
 void Display();
 float truncate(float val, byte dec);
 
-const int baud_rate = 115200;
+const long baud_rate = 115200;
 // SD Card
 const int chipSelect = 4;
 const String filename = "Pressure.csv";
@@ -49,7 +50,7 @@ void setup() {
   Serial.begin(baud_rate);
   // see if the card is present and can be initialized, keep waiting if not
   while (!SD.begin(chipSelect)) {
-    delay(1000);
+    //Serial.print("stuck");
   }
   // set up pressure reading
   pinMode(press_int_pin, INPUT);
@@ -62,7 +63,8 @@ void loop() {
   while(state == false){
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
-
+    Serial.println(press_int_val);
+    Serial.println(press_ext_val);
     //TODO: figure out what signals we will recieve from master and from there interperet signals
     if(Serial.available() > 0)
     {
@@ -70,14 +72,15 @@ void loop() {
     }
     // send signal to master that the right pressure has been reached
     if(press_int_val >= desired_press_int){current = '1';}
-
+    Serial.print(tim() - sT);
     if(tim() - sT >= sInt){
+      Serial.print("loop");
       Display();
       sT = tim();
     }
 
     if(master_state = 'y')
-      state = true
+      state = true;
   }
 
   ///////////////////Launch and Collect Data loop
@@ -104,7 +107,7 @@ void loop() {
       record(tim(tlaunch));
       record(press_int_val);
       record(press_ext_val);
-      sdata += '\n'
+      sdata += '\n';
 
       t = tim();
       i++;
@@ -150,21 +153,24 @@ void dump(){
 }
 //Takes pressure readings, typecasts them and appends respective variables beforehand
 void Display(){
-  String out = "";
-  out += 'a';
+  Serial.println("start");
+  String out = "a";
   out += current;
   out += 'b';
-  out += String(truncate(press_int_val,2)); // internal pressure
+  //out += String(truncate(press_int_val,2)); // internal pressure
+  out += String(1.02);
   out += 'c';
-  out += String(truncate(press_ext_val,2)); // external pressure
+  //out += String(truncate(press_ext_val,2)); // external pressure
+  out += String(1.04);
   out += 'd';
-  out += String(truncate(tim(), 2));
+  out += String(truncate(time(), 2));
   out += 'e';
   //Serial.println(out);
-  //c_array = out.c_str();
   char c_array[30] = "";
-  for (i = 0; i < out.length(); i++)
+  for (size_t i = 0; i < out.length(); i++)
+  {
       c_array[i] = out[i];// comment back in
+  }
   //char c_array[22] = "a0b0.123c0.234d0.345e"; // comment this out
   Serial.write(c_array);
 }
