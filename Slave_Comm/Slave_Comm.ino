@@ -113,29 +113,6 @@ void loop() {
   }
 }
 
-void Display(){
-  String out = "";
-  out += 'a';
-  out += current;
-  out += 'b';
-  //out += String(truncate(press_int_val,2)); // internal pressure
-  out += String(press_int_val *37.5 - 18.75,4);
-  out += 'c';
-  //out += String(truncate(press_ext_val,2)); // external pressure
-  out += String(press_ext_val *37.5 - 18.75,4);
-  out += 'd';
-  out += String(time(0),4);
-  out += 'e';
-  //Serial.println(out);
-  char c_array[30] = "";
-  for (size_t i = 0; i < out.length(); i++)
-  {
-      c_array[i] = out[i];// comment back in
-  }
-  Serial.write(c_array);
-  Serial.println("");
-}
-
 /////////////////////////Functions
 // function that takes pressure reading in bits and outputs psi
 double bits_to_psi(double bits){
@@ -163,7 +140,28 @@ void dump(){
   sdata = "";
 }
 //Takes pressure readings, typecasts them and appends respective variables beforehand
-
+void Display(){
+  String out = "";
+  out += 'a';
+  out += current;
+  out += 'b';
+  //out += String(truncate(press_int_val,2)); // internal pressure
+  out += String(press_int_val *37.5 - 18.75,4);
+  out += 'c';
+  //out += String(truncate(press_ext_val,2)); // external pressure
+  out += String(press_ext_val *37.5 - 18.75,4);
+  out += 'd';
+  out += String(time(0),4);
+  out += 'e';
+  //Serial.println(out);
+  char c_array[30] = "";
+  for (size_t i = 0; i < out.length(); i++)
+  {
+      c_array[i] = out[i];// comment back in
+  }
+  Serial.write(c_array);
+  Serial.println("");
+}
 
 float truncate(float val, byte dec)
   {
