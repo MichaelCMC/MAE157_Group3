@@ -1,3 +1,4 @@
+```
 #include <SPI.h>
 #include <SD.h>
 
@@ -192,3 +193,4 @@ float truncate(float val, byte dec)
     x = y / pow(10, dec);
     return x;
 }
+```
