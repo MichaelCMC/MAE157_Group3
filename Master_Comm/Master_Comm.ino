@@ -20,7 +20,7 @@ double curr_p_ext = 0;
 char curr_sign ='0';
 
 // high if the button is pressed
-int button_state = 0;
+int button_state = LOW;
 // high if pot is turned to right position
 int pot_state = 0;
 // RGB value from pot reading
@@ -55,6 +55,9 @@ const int r4 = 5; //pin d5
 const int r5 = 6; //pin d6
 const int r6 = 7; //pin d7
 
+float T1 = 0;
+float T2 = 0;
+
 LiquidCrystal lcd(r1, r2, r3, r4, r5, r6);
 
 void setup() {
@@ -71,10 +74,13 @@ void setup() {
 }
 
 void loop() {
-  to_LCD();
-  // read from slave
-  if (slave_reading()){
+  T2 = millis();
+  if(T2-T1>500){
+    T1 = T2;
+    to_LCD();
   }
+  // read from slave
+  slave_reading();
   //Serial.println(Serial.read());
   // For testing use a0b0.123c0.234d0.345e
  /* if (Serial.available()>0){
@@ -91,6 +97,7 @@ void loop() {
 
   //i reads if the button has been pushed
   button_state = digitalRead(button_pin);
+  Serial.print(button_state);
 
   // turn on RGB LED
   RGB(analogRead(pot_pin));
@@ -100,13 +107,13 @@ void loop() {
 
   // if slave pressure reading is corret, turn on LED
   if(curr_sign == '1'){digitalWrite(slave_led_pin, HIGH); 
-  } else {digitalWrite(slave_led_pin, LOW);}
+  } else if (curr_sign =='0') {digitalWrite(slave_led_pin, LOW);}
   
 
   // if button is pressed, slave at right pressure, and pot at right position launch rocket
-  if(button_state == HIGH && curr_sign == '0' && pot_state == HIGH){
+  if(button_state == HIGH && curr_sign == '1' && pot_state == HIGH){
     // send signal to slave to launch the thing
-    for(int i = 0; i < 4; i++){
+    for(int i = 0; i < 10; i++){
       Serial.write('y');
     }
 
@@ -154,7 +161,7 @@ void RGB(int pot){
 }
 
 // begin reading slave data
-bool slave_reading(){
+void slave_reading(){
   // currently read char
   char curr_read = 'z';
   // data indicator
@@ -169,7 +176,6 @@ bool slave_reading(){
     while (Serial.available() > 0){
       // read first char
       curr_read = Serial.read();
-      //Serial.print(curr_read);
       // if read char is an indicator
       if (sig_chars.indexOf(curr_read) != -1){
         //Serial.println("");
@@ -200,13 +206,11 @@ bool slave_reading(){
         }
         // set indicator to currently read value
         indicator = curr_read;
-        if (curr_read == 'e'){return true;}
+        if (curr_read == 'e'){return;}
       } else{
           // add to the data string
           data_string += curr_read;
       }
     }
   }
-
-  return false;
 }
