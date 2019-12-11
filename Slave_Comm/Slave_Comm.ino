@@ -3,10 +3,10 @@
 
 
 const float baud_rate = 115200;
-// SD Card
-const int chipSelect = 4;
-const String filename = "Pressure.csv";
+//
 String sdata = "";
+String in = "";
+String out = "";
 
 // set up pins
 const int relay_pin = 2;
@@ -21,28 +21,27 @@ const double desired_press_int = 0;
 //Rate Control
 //sample rate
 const double sam(1000); // sampling frequency in hz
-const int final(10000); //number of total samples to record (altered from 1000000 to 10000)
+const long final(100000); //number of total samples to record
 const double interval(1.0/sam); //time interval between samples in [s]
 double t(0); // sampling time tracking variable
 double tlaunch(0);
 //signal rate
-const double sig(1000); //signal frequency in hz
+const double sig(800); //signal frequency in hz
 const double sInt(1.0/sig); //signal time period in seconds
 double sT(0); //signal time tracking variable
+double dT(0); //Display time tracker
 // Communication Variables
 bool state(false);
 char master_state = '0';
 char current('0');
 
-int i = 0;
+long i = 0;
 double i_interval = 0;
 
 //////////////////////////End Header
 
 void setup() {
   Serial.begin(baud_rate);
-  // see if the card is present and can be initialized, keep waiting if not
-  // set up pressure reading
   pinMode(press_int_pin, INPUT);
   pinMode(press_ext_pin, INPUT);
   pinMode(relay_pin, OUTPUT);
@@ -83,10 +82,11 @@ void loop() {
     //data collection cap is defined by [final] which control max # of samples to be taken and [sam] which controls interval between samples
     current = '0';
     //Relay control setup
-    if(i*interval >= 2.0)
+    if(i*interval >= 1 && tlaunch == 0){
       digitalWrite(relay_pin, HIGH);
       tlaunch = time(0);
-    if(i*interval >= 3.5 && i_interval <= 4.0)
+    }
+    if(i*interval >= 2.5 && i_interval <= 3.0)
       digitalWrite(relay_pin, LOW);
 
     //DATA COLLECTION
@@ -95,23 +95,61 @@ void loop() {
     //best to send data fairly slowly, maybe 1.5hz or so since updating the lcd too fast makes it look ugly. Also to prevent filling up the buffer
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
-    if(time(0) - sT >= sInt){
-      Display();
+    in = String(press_int_val,3);
+    out = String(press_ext_val,3);
+    if(i < final && time(0) - t >= interval){
+      record();
+      t = time(0);
+      i++;
+    }
+    if(time(0) - sT >= sInt || sizeof(sdata) >= 20){
+      dump(); //dump function for writing to SD card and clearing out sdata
       sT = time(0);
+    }
+    if(time(0) - dT >= sInt*10){
+      Display();
+      dT = time(0);
     }
   }
 }
 
+/////////////////////////Functions
+// function that takes pressure reading in bits and outputs psi
+double bits_to_psi(double bits){
+  double voltage = bits*5/1023.0;
+  //double psi = voltage *37.5 - 18.75;
+  return voltage;
+}
+//Function that grabs current time, based on our standardized format
+double time(double offset){
+  return((micros()/1000000.0) - offset);
+}
+//Modifies sdata by concatenating the passed data with a conditional comma preceeding it
+void record(){
+  //Serial.print("record");
+  sdata += String(time(tlaunch), 3);
+  sdata += ',';
+  sdata += in;
+  sdata += ',';
+  sdata += out;
+  sdata += '\n';
+}
+//dumps recorded data to SD card
+void dump(){
+  Serial.print(sdata);
+  sdata = "";
+}
+//Takes pressure readings, typecasts them and appends respective variables beforehand
 void Display(){
   String out = "";
   out += 'a';
   out += current;
   out += 'b';
   //out += String(truncate(press_int_val,2)); // internal pressure
-  out += String(press_int_val,4);
+  out += String(press_int_val *37.5 - 18.75,4);
   out += 'c';
   //out += String(truncate(press_ext_val,2)); // external pressure
-  out += String(1.04,4);
+  out += String(press_ext_val *37.5 - 18.75,4);
   out += 'd';
   out += String(time(0),4);
   out += 'e';
@@ -124,40 +162,6 @@ void Display(){
   Serial.write(c_array);
   Serial.println("");
 }
-
-/////////////////////////Functions
-// function that takes pressure reading in bits and outputs psi
-double bits_to_psi(double bits){
-  double voltage = bits*5/1023.0;
-  double psi = voltage *50 - 25;
-  return psi;
-}
-//Function that grabs current time, based on our standardized format
-double time(double offset){
-  return((micros()/1000000.0) - offset);
-}
-//Modifies sdata by concatenating the passed data with a conditional comma preceeding it
-void record(double data){
-  if(sdata != "")
-    sdata += ","; //playing fast and loose
-  sdata += String(data);
-}
-//dumps recorded data to SD card
-void dump(){
-  File dataFile = SD.open(filename, FILE_WRITE);
-  // if the file is available, write to it:
-  if (dataFile) {
-    dataFile.print(sdata);
-    dataFile.close();
-    sdata = "";
-  }
-  // if the file isn't open, pop up an error:
-  else {
-    // Put some kind of error message signal
-  }
-}
-//Takes pressure readings, typecasts them and appends respective variables beforehand
-
 
 float truncate(float val, byte dec)
   {
