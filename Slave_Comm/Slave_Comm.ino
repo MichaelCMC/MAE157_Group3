@@ -57,7 +57,6 @@ void loop() {
     press_int_val = bits_to_psi(analogRead(press_int_pin));
     press_ext_val = bits_to_psi(analogRead(press_ext_pin));
 
-    //TODO: figure out what signals we will recieve from master and from there interperet signals
     if(Serial.available() > 0)
     {
       master_state = Serial.read();
